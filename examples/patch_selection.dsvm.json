@@ -1,0 +1,28 @@
+{
+  "format": "dsvm-model",
+  "version": 1,
+  "name": "Patch selection under predation risk (Mangel & Clark 1988, ch. 2)",
+  "description": "A forager chooses one of three patches each period. Patch 1 is safe but has no food; patches 2 and 3 offer food with increasing probability and increasing predation risk. Metabolic cost is 1 unit per period in every patch. The forager dies if reserves fall to x_crit = 3. Terminal fitness is survival (1 if alive at T). PROVENANCE: parameters as transcribed by NotebookLM from the book PDF in Mike Heithaus's 2026-09-16 session (beta = 0, 0.004, 0.020; lambda = 0, 0.4, 0.6; food Y = 0, 3, 5; cost alpha = 1; x_crit = 3; C = 10). The book's printed F(x,t) table was not available to check against; see README 'Verification'.",
+  "horizon": 20,
+  "state_variables": [
+    {"name": "x", "label": "Energy reserves", "min": 3, "max": 10, "lethal_min": true, "initial": 8}
+  ],
+  "actions": [
+    {"name": "Patch 1 (safe, no food)", "mortality": "0", "reward": "0",
+     "outcomes": [
+       {"label": "metabolic cost only", "prob": "1", "change": {"x": "-1"}}
+     ]},
+    {"name": "Patch 2 (moderate)", "mortality": "0.004", "reward": "0",
+     "outcomes": [
+       {"label": "found food (+3 - 1)", "prob": "0.4", "change": {"x": "3 - 1"}},
+       {"label": "no food (-1)", "prob": "0.6", "change": {"x": "-1"}}
+     ]},
+    {"name": "Patch 3 (risky)", "mortality": "0.020", "reward": "0",
+     "outcomes": [
+       {"label": "found food (+5 - 1)", "prob": "0.6", "change": {"x": "5 - 1"}},
+       {"label": "no food (-1)", "prob": "0.4", "change": {"x": "-1"}}
+     ]}
+  ],
+  "terminal_fitness": "1",
+  "simulation": {"individuals": 1000, "seed": 42}
+}

@@ -1,0 +1,24 @@
+{
+  "format": "dsvm-model",
+  "version": 1,
+  "name": "Two state variables: energy reserves and gut contents (illustrative)",
+  "description": "Demonstrates a model with two named state variables and expressions that depend on state and time. Energy reserves x are lethal at 0; gut contents g are not lethal at 0 (an empty gut is allowed). Each period the animal chooses to forage or rest. Foraging finds food with a probability that declines as the gut fills (satiation) and carries a predation risk that is higher for lean animals (which forage less carefully) and rises late in the season. Digestion moves 1 unit from gut to reserves each period; resting costs 1 unit of reserves. Terminal fitness increases with reserves. This example is illustrative only: its parameters are not taken from a published study.",
+  "horizon": 30,
+  "state_variables": [
+    {"name": "x", "label": "Energy reserves", "min": 0, "max": 12, "lethal_min": true, "initial": 6},
+    {"name": "g", "label": "Gut contents", "min": 0, "max": 4, "lethal_min": false, "initial": 0}
+  ],
+  "actions": [
+    {"name": "Forage", "mortality": "(x < 4 ? 0.03 : 0.015) * (1 + 0.5 * t / T)", "reward": "0",
+     "outcomes": [
+       {"label": "found food", "prob": "0.6 - 0.1 * g", "change": {"x": "min(g, 1) - 1", "g": "3 - min(g, 1)"}},
+       {"label": "no food", "prob": "1 - (0.6 - 0.1 * g)", "change": {"x": "min(g, 1) - 1", "g": "-min(g, 1)"}}
+     ]},
+    {"name": "Rest", "mortality": "0.002", "reward": "0",
+     "outcomes": [
+       {"label": "digest", "prob": "1", "change": {"x": "min(g, 1) - 1", "g": "-min(g, 1)"}}
+     ]}
+  ],
+  "terminal_fitness": "x / 12",
+  "simulation": {"individuals": 1000, "seed": 7}
+}

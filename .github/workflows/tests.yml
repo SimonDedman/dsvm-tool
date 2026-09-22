@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: pip install -e "python[test]"
+      - name: Syntax-check JavaScript modules
+        run: for f in docs/*.js docs/tools/*.mjs; do node --check "$f"; done
+      - name: Run tests (includes the JavaScript/Python cross-check)
+        run: cd python && python -m pytest -q

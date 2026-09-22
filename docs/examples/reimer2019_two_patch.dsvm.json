@@ -1,0 +1,24 @@
+{
+  "format": "dsvm-model",
+  "version": 1,
+  "name": "Two-patch example (Reimer, Mangel, Derocher & Lewis 2019)",
+  "description": "Illustrative patch-choice model from Reimer et al. (2019) Methods in Ecology and Evolution, 'Matrix methods for stochastic dynamic programming in ecology and evolutionary biology' (https://doi.org/10.5281/zenodo.2547815 for their Matlab code). Five energy states x = 1..5 plus death at x = 0. Patch 1: finds food with probability 0.4, survives the period with probability 0.99. Patch 2: finds food with probability 0.8, survives with probability 0.891. Food adds 3 units and the metabolic cost is 1 (net +2); no food costs 1. An individual at x = 1 that finds no food dies. PUBLISHED RESULT (verified from the paper's text): far from the horizon the optimal policy is patch 2 at x = 1, 2 and patch 1 at x = 3, 4, 5, and the long-run per-period survival (dominant eigenvalue) is 0.97. The test suite checks both.",
+  "horizon": 100,
+  "state_variables": [
+    {"name": "x", "label": "Energy reserves", "min": 0, "max": 5, "lethal_min": true, "initial": 3}
+  ],
+  "actions": [
+    {"name": "Patch 1 (low risk)", "mortality": "1 - 0.99", "reward": "0",
+     "outcomes": [
+       {"label": "found food", "prob": "0.4", "change": {"x": "3 - 1"}},
+       {"label": "no food", "prob": "0.6", "change": {"x": "-1"}}
+     ]},
+    {"name": "Patch 2 (high risk)", "mortality": "1 - 0.891", "reward": "0",
+     "outcomes": [
+       {"label": "found food", "prob": "0.8", "change": {"x": "3 - 1"}},
+       {"label": "no food", "prob": "0.2", "change": {"x": "-1"}}
+     ]}
+  ],
+  "terminal_fitness": "1",
+  "simulation": {"individuals": 2000, "seed": 1}
+}

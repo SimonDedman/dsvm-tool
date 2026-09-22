@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynamic State Variable Model builder</title>
+<meta name="description" content="Build, solve, and simulate dynamic state variable models in the browser, after Mangel &amp; Clark.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400;1,600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <div class="masthead-text">
+      <h1>Dynamic State Variable Model builder</h1>
+      <p class="subtitle">Backward induction and individual-based Monte Carlo, after Mangel &amp; Clark (1988) and Clark &amp; Mangel (2000).</p>
+    </div>
+    <svg class="lattice" viewBox="0 0 132 64" aria-hidden="true" focusable="false">
+      <g class="lattice-dots"></g>
+      <path class="lattice-path" d="M8 48 L28 40 L48 44 L68 28 L88 20 L108 24 L124 12"/>
+    </svg>
+  </div>
+  <div class="wrap toolbar" role="group" aria-label="Model file actions">
+    <label class="field inline">
+      <span>Load example</span>
+      <select id="exampleSelect">
+        <option value="">Choose an example</option>
+        <option value="patch_selection.dsvm.json">Patch selection under predation risk</option>
+        <option value="two_state_energy_gut.dsvm.json">Two state variables: energy and gut</option>
+        <option value="reimer2019_two_patch.dsvm.json">Two-patch example (Reimer et al. 2019)</option>
+      </select>
+    </label>
+    <label class="btn file-btn">Open model file<input type="file" id="openFile" accept=".json,application/json"></label>
+    <button type="button" class="btn" id="saveBtn">Save model</button>
+    <button type="button" class="btn quiet" id="resetBtn">Reset to blank</button>
+    <span class="toolbar-note" id="toolbarNote" role="status"></span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="card" id="sec-model" data-num="1">
+    <h2>Model</h2>
+    <div class="grid2">
+      <label class="field"><span>Model name</span>
+        <input type="text" id="modelName" placeholder="e.g. Patch selection under predation risk">
+      </label>
+      <label class="field"><span>Time horizon <i>T</i> (number of periods, integer of 2 or more)</span>
+        <input type="number" id="horizon" step="1" min="2" value="20">
+        <em class="err" id="horizonErr"></em>
+      </label>
+    </div>
+    <label class="field"><span>Description (free text; cite the source of the parameters here)</span>
+      <textarea id="modelDesc" rows="3" placeholder="Where these parameters came from, and what the model is for."></textarea>
+    </label>
+    <p class="hint">Decisions are taken at <i>t</i> = 1 to <i>T</i>&#8722;1. At <i>t</i> = <i>T</i> the terminal fitness function is evaluated instead.</p>
+  </section>
+
+  <section class="card" id="sec-vars" data-num="2">
+    <h2>State variables</h2>
+    <p class="hint">Each state variable is an integer on a closed range, and the model grid is every combination of their values. Tick the lethal box for a quantity whose minimum means death, such as energy reserves; leave it unticked where the minimum is only a floor, such as gut contents.</p>
+    <div id="varList" class="item-list"></div>
+    <div class="row-actions">
+      <button type="button" class="btn" id="addVar">Add state variable</button>
+      <span class="metric" id="gridSize"></span>
+    </div>
+    <div class="alert warn hidden" id="gridWarn"></div>
+  </section>
+
+  <section class="card" id="sec-actions" data-num="3">
+    <h2>Actions (behavioural choices)</h2>
+    <p class="hint">Order matters: when two actions give exactly equal fitness, the one listed first is chosen. Use the up and down buttons to set that order.</p>
+    <div id="actionList" class="item-list"></div>
+    <button type="button" class="btn" id="addAction">Add action</button>
+  </section>
+
+  <section class="card" id="sec-terminal" data-num="4">
+    <h2>Terminal fitness &#966;(<i>x</i>)</h2>
+    <label class="field"><span>Expression evaluated at <i>t</i> = <i>T</i> for every live state</span>
+      <input type="text" class="mono" id="terminalFitness" value="1">
+      <em class="err" id="terminalFitnessErr"></em>
+    </label>
+    <p class="hint">Examples: <code>1</code> for survival to the horizon, <code>x / 10</code> for fitness proportional to reserves, <code>x &gt; 5 ? 1 : 0</code> for a threshold. Dead states have fitness 0 whatever this says.</p>
+  </section>
+
+  <section class="card" id="sec-equation" data-num="5">
+    <h2>The equation being solved</h2>
+    <p class="hint">This is your model, written out with your own names. It updates as you type.</p>
+    <div class="equation" id="equationBox"></div>
+    <div id="equationTables"></div>
+  </section>
+
+  <section class="card" data-num="6">
+    <h2>Expression help</h2>
+    <details id="exprHelp">
+      <summary>How to write parameters and expressions</summary>
+      <div class="help-body">
+        <p>Every parameter is either a plain number, such as <code>0.004</code>, or an expression in your state variable names. Expressions are parsed by the tool itself; no code is executed.</p>
+        <h3>What you can refer to</h3>
+        <ul>
+          <li>Any state variable by the name you gave it. Names are case-sensitive.</li>
+          <li><code>t</code>, the current period, running from 1 to <i>T</i>&#8722;1 for decisions.</li>
+          <li><code>T</code>, the time horizon.</li>
+        </ul>
+        <p><code>t</code> and <code>T</code> are reserved, so a state variable cannot be called either of them, nor share a name with one of the functions below.</p>
+        <h3>Arithmetic and comparison</h3>
+        <ul>
+          <li><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> (remainder), and <code>^</code> for powers, which groups from the right.</li>
+          <li><code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code> <code>==</code> <code>!=</code> give 1 for true and 0 for false, so they can be multiplied straight into a formula.</li>
+          <li><code>and</code> <code>or</code> <code>not</code> (also written <code>&amp;&amp;</code> <code>||</code> <code>!</code>) treat any non-zero value as true.</li>
+          <li><code>condition ? a : b</code> chooses <code>a</code> when the condition is non-zero, otherwise <code>b</code>. <code>if(condition, a, b)</code> means the same thing.</li>
+        </ul>
+        <h3>Functions</h3>
+        <p><code>min(a, b, ...)</code>, <code>max(a, b, ...)</code>, <code>abs(a)</code>, <code>floor(a)</code>, <code>ceil(a)</code>, <code>round(a)</code>, <code>sqrt(a)</code>, <code>exp(a)</code>, <code>log(a)</code> (natural), <code>pow(a, b)</code>, <code>if(c, a, b)</code>.</p>
+        <h3>Rules the solver enforces</h3>
+        <ul>
+          <li>For each action, the outcome probabilities must sum to 1 at every live state and every decision time. Nothing is renormalised for you; a sum that is not 1 is reported as an error naming the state and the time.</li>
+          <li>Mortality risk and outcome probabilities must fall in [0, 1].</li>
+          <li>A change that comes out non-integer is rounded to the nearest integer, away from zero on a half, and the solve reports a warning saying which expression it was.</li>
+          <li>Changes are clamped to the variable's range, never wrapped or discarded.</li>
+          <li>Dividing by zero, taking <code>log</code> of a non-positive number, or <code>sqrt</code> of a negative number stops the solve with an error. Nothing is substituted silently.</li>
+          <li>Expressions are always evaluated at the current state and time, never at the state the individual moves to.</li>
+        </ul>
+        <h3>Worked examples</h3>
+        <ul>
+          <li><code>3 - 1</code> &mdash; a gain of 3 units of food less a metabolic cost of 1.</li>
+          <li><code>0.6 - 0.1 * g</code> &mdash; a foraging success rate that falls as the gut <code>g</code> fills.</li>
+          <li><code>(x &lt; 4 ? 0.03 : 0.015) * (1 + 0.5 * t / T)</code> &mdash; predation risk higher for lean animals and rising through the season.</li>
+          <li><code>1 - (0.6 - 0.1 * g)</code> &mdash; the complement, so the two outcome probabilities sum to 1 everywhere.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" data-num="7">
+    <h2>Solve</h2>
+    <p class="hint">Backward induction over every state and period. The solver checks the whole model first and stops at the first problem it finds.</p>
+    <div class="row-actions">
+      <button type="button" class="btn primary" id="solveBtn">Validate &amp; solve</button>
+      <span class="metric" id="solveStatus" role="status"></span>
+    </div>
+    <div id="solveAlerts"></div>
+    <div id="solveResults" class="hidden">
+      <h3>Decision matrix <i>d</i>*(<i>x</i>, <i>t</i>)</h3>
+      <p class="hint">The action that maximises expected fitness at each state and time. Blank cells are dead states, and no decision is taken at <i>t</i> = <i>T</i>.</p>
+      <div id="decisionView"></div>
+      <h3>Fitness matrix <i>F</i>(<i>x</i>, <i>t</i>)</h3>
+      <p class="hint">Expected fitness from state <i>x</i> at time <i>t</i> under the optimal policy.</p>
+      <div id="fitnessView"></div>
+      <div class="row-actions">
+        <button type="button" class="btn" id="dlFitness">Download fitness_F.csv</button>
+        <button type="button" class="btn" id="dlDecision">Download decision_D.csv</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" data-num="8">
+    <h2>Simulate</h2>
+    <p class="hint">Individual-based forward Monte Carlo under the optimal policy from the solve.</p>
+    <fieldset id="simControls" disabled>
+      <div class="grid3">
+        <label class="field"><span>Number of individuals</span>
+          <input type="number" id="simN" step="1" min="1" max="100000" value="1000">
+        </label>
+        <label class="field"><span>Random seed</span>
+          <input type="number" id="simSeed" step="1" value="42">
+        </label>
+      </div>
+      <div id="simInitial" class="grid3"></div>
+      <div class="alert warn hidden" id="simWarn"></div>
+      <div class="row-actions">
+        <button type="button" class="btn primary" id="simBtn">Run Monte Carlo simulation</button>
+        <span class="metric" id="simStatus" role="status"></span>
+      </div>
+    </fieldset>
+    <p class="hint" id="simLocked">Solve the model first; the simulation follows the decision matrix.</p>
+    <div id="simAlerts"></div>
+    <div id="simResults" class="hidden">
+      <div id="simHeadline" class="headline"></div>
+      <h3>Survival</h3>
+      <div id="plotSurvival" class="plot"></div>
+      <h3>Mean state among the living</h3>
+      <div id="plotMeanState" class="plot"></div>
+      <h3>Behaviour</h3>
+      <div id="plotBehaviour" class="plot"></div>
+      <h3>Individual trajectories</h3>
+      <div class="row-actions">
+        <label class="field inline"><span>State variable</span><select id="trajVar"></select></label>
+      </div>
+      <div id="plotTraj" class="plot"></div>
+      <div class="row-actions">
+        <button type="button" class="btn" id="dlSimSummary">Download simulation_summary.csv</button>
+        <button type="button" class="btn" id="dlSimIndividuals">Download simulation_individuals.csv</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p><a href="https://github.com/SimonDedman/dsvm-tool">Source code and issues on GitHub</a> &nbsp; <a href="https://github.com/SimonDedman/dsvm-tool/blob/main/SPEC.md">SPEC.md, the model format and semantics</a></p>
+    <p class="footnote">This page uses ES modules, which browsers refuse to load from a <code>file://</code> path. Open the hosted copy at <a href="https://simondedman.github.io/dsvm-tool/">simondedman.github.io/dsvm-tool</a>, or serve the <code>docs</code> folder locally with <code>python3 -m http.server</code> and visit the address it prints.</p>
+  </div>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
