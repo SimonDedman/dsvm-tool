@@ -66,6 +66,7 @@ function rebuild() {
 }
 
 function setModel(m, message) {
+  $("exampleSelect").value = "";
   state.model = normaliseModel(m);
   state.compiled = state.sol = state.sim = state.proj = null;
   $("solveResults").classList.add("hidden");
@@ -256,7 +257,9 @@ async function loadExample(file) {
     if (!res.ok) throw new Error(`the server returned ${res.status} ${res.statusText}`);
     const data = await res.json();
     setModel(data, `Loaded ${file}.`);
+    $("exampleSelect").value = file;
   } catch (e) {
+    $("exampleSelect").value = "";
     $("solveAlerts").replaceChildren(alertBox("error", `Could not load the example ${file}`,
       `${e && e.message ? e.message : String(e)}\n\nExamples are fetched over HTTP. If this page was opened from a file:// path, serve the docs folder instead, or use the hosted copy.`));
   }
@@ -265,7 +268,6 @@ async function loadExample(file) {
 function wireToolbar() {
   $("exampleSelect").onchange = (e) => {
     const file = e.target.value;
-    e.target.value = "";
     if (file) loadExample(file);
   };
 
@@ -362,6 +364,7 @@ async function boot() {
     const res = await fetch(`examples/${DEFAULT_EXAMPLE}`, { cache: "no-cache" });
     if (!res.ok) throw new Error(`the server returned ${res.status} ${res.statusText}`);
     setModel(await res.json(), "Loaded the patch selection example to start from.");
+    $("exampleSelect").value = DEFAULT_EXAMPLE;
   } catch (e) {
     setModel(blankModel(), "");
     $("solveAlerts").replaceChildren(alertBox("warn", "The starting example could not be fetched",
