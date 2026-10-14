@@ -3,6 +3,7 @@
 // source of truth; this module reads and writes it and nothing else.
 
 import { Expression, ExprError, isValidIdentifier } from "./expr.js";
+import { actionColour } from "./plots.js";
 
 export const FORMAT = "dsvm-model";
 export const FORMAT_VERSION = 1;
@@ -544,5 +545,4 @@ export function renderEquation(m) {
   tables.innerHTML = blocks;
 }
 
-const SWATCHES = ["#0072b2", "#d55e00", "#009e73", "#cc79a7", "#e69f00", "#56b4e9", "#8a6a0b", "#000000"];
-const actionSwatch = (i) => SWATCHES[i % SWATCHES.length];
+const actionSwatch = actionColour;

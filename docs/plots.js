@@ -4,9 +4,11 @@
 const Plotly = () => globalThis.Plotly;
 
 /** Okabe-Ito qualitative palette: distinguishable with any common form of
- *  colour vision deficiency. Reused for actions and state variables. */
+ *  colour vision deficiency. Order set by Simon 2026-10-14: action 1 green,
+ *  2 blue, 3 orange, used everywhere (form swatches, plots, explainer).
+ *  Also reused for state variables and survival lines. */
 export const PALETTE = [
-  "#0072b2", "#d55e00", "#009e73", "#cc79a7",
+  "#009e73", "#0072b2", "#d55e00", "#cc79a7",
   "#e69f00", "#56b4e9", "#8a6a0b", "#000000",
 ];
 
