@@ -18,6 +18,141 @@
     <div class="masthead-text">
       <h1>Dynamic State Variable Model builder</h1>
       <p class="subtitle">Backward induction and individual-based Monte Carlo, after Mangel &amp; Clark (1988) and Clark &amp; Mangel (2000).</p>
+      <details class="about" id="about">
+        <summary>What does this mean and what does it do?</summary>
+        <div class="about-body">
+
+          <section class="about-sec">
+            <h3>In one sentence</h3>
+            <p class="about-lead">An animal&#8217;s best choice right now depends on its <strong>condition</strong> and on <strong>how much time is left</strong>. This builder works out the best choice for every possible condition at every point in time, then releases simulated animals that follow those rules so you can see what happens to them.</p>
+          </section>
+
+          <section class="about-sec">
+            <h3>The ecological idea</h3>
+            <div class="about-cols">
+              <div>
+                <p>Animals constantly trade one need against another: feed in a rich but dangerous patch, or hide somewhere safe and go hungry? The right answer is not fixed. A well-fed animal can afford to play safe; a starving one may have to gamble. Dugongs in Shark Bay face this every day when tiger sharks are present and the best seagrass grows in the most dangerous shallows.</p>
+                <p>A <em>dynamic state variable model</em> (DSVM) makes this precise. You describe:</p>
+                <ul>
+                  <li><strong>State variables</strong>: the animal&#8217;s condition, counted in whole steps (energy reserves, gut contents, body size, eggs carried).</li>
+                  <li><strong>Actions</strong>: the choices open to it each period, each with a risk of death and a set of possible outcomes for its state.</li>
+                  <li><strong>Terminal fitness</strong>: what its state is worth at the end of the season (survival, breeding success).</li>
+                </ul>
+                <p>The model then finds the behaviour that natural selection should favour: the choice that maximises expected fitness at the end.</p>
+              </div>
+              <figure class="about-fig">
+                <svg viewBox="0 0 320 200" role="img" aria-labelledby="tradeoffTitle">
+                  <title id="tradeoffTitle">A forager weighing a safe empty refuge against a rich but risky patch, with the choice depending on its reserves</title>
+                  <rect x="10" y="20" width="110" height="120" rx="6" class="ab-safe"/>
+                  <text x="65" y="42" class="ab-h">Refuge</text>
+                  <text x="65" y="60" class="ab-s">no food</text>
+                  <text x="65" y="76" class="ab-s">no predators</text>
+                  <rect x="200" y="20" width="110" height="120" rx="6" class="ab-risk"/>
+                  <text x="255" y="42" class="ab-h">Rich patch</text>
+                  <text x="255" y="60" class="ab-s">lots of food</text>
+                  <text x="255" y="76" class="ab-s">predators</text>
+                  <circle cx="160" cy="80" r="16" class="ab-animal"/>
+                  <text x="160" y="85" class="ab-h ab-inv">?</text>
+                  <path d="M142 80 H126" class="ab-arrow" marker-end="url(#abHead)"/>
+                  <path d="M178 80 H194" class="ab-arrow" marker-end="url(#abHead)"/>
+                  <text x="65" y="118" class="ab-s">if well fed</text>
+                  <text x="255" y="118" class="ab-s">if starving</text>
+                  <text x="160" y="172" class="ab-s">The best choice depends on state</text>
+                  <text x="160" y="190" class="ab-s">and on time remaining.</text>
+                  <defs><marker id="abHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="ab-headfill"/></marker></defs>
+                </svg>
+              </figure>
+            </div>
+          </section>
+
+          <section class="about-sec">
+            <h3>How the builder works</h3>
+            <figure class="about-fig wide">
+              <svg viewBox="0 0 960 230" role="img" aria-labelledby="stepsTitle">
+                <title id="stepsTitle">Three steps: define states and time, solve backwards from the end, then simulate individuals forwards</title>
+                <defs><marker id="abHead2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="ab-headfill"/></marker></defs>
+                <g class="ab-grid" id="abGrid1" transform="translate(30 40)"></g>
+                <g class="ab-grid" id="abGrid2" transform="translate(350 40)"></g>
+                <g class="ab-grid" id="abGrid3" transform="translate(670 40)"></g>
+                <text x="140" y="24" class="ab-h">1. Describe the animal</text>
+                <text x="460" y="24" class="ab-h">2. Solve backwards</text>
+                <text x="780" y="24" class="ab-h">3. Simulate forwards</text>
+                <text x="140" y="196" class="ab-s">States (rows) &#215; time (columns).</text>
+                <text x="140" y="214" class="ab-s">Fitness is known only at the end, T.</text>
+                <text x="460" y="196" class="ab-s">From T back to 1, each cell keeps the</text>
+                <text x="460" y="214" class="ab-s">action with the best expected future.</text>
+                <text x="780" y="196" class="ab-s">Individuals follow that rule while</text>
+                <text x="780" y="214" class="ab-s">chance decides food and death.</text>
+              </svg>
+            </figure>
+            <p>Step 2 is <em>backward induction</em>, the core of the method. At the final time the value of every state is known. One step earlier, each action&#8217;s value is its chance of surviving times the average value of the states it could lead to; the best action wins. Repeating this back to the start fills in two tables:</p>
+            <p class="about-eq"><i>F</i>(<i>x</i>, <i>t</i>) = max over actions of &#91; (1 &#8722; risk of death) &#215; &#931; probability of outcome &#215; <i>F</i>(new state, <i>t</i> + 1) &#93;</p>
+            <ul>
+              <li><strong>Fitness matrix <i>F</i>(<i>x</i>, <i>t</i>)</strong>: the best expected final fitness from state <i>x</i> at time <i>t</i>.</li>
+              <li><strong>Decision matrix <i>d</i>*(<i>x</i>, <i>t</i>)</strong>: the action that achieves it, i.e. the optimal behaviour.</li>
+            </ul>
+            <p>Step 3 is a <em>Monte Carlo</em> simulation: thousands of virtual individuals start in a chosen state and follow the decision matrix, with random draws for food found and predators met. That gives survival curves, average condition over time, and how often each behaviour is used.</p>
+          </section>
+
+          <section class="about-sec">
+            <h3>What an answer looks like</h3>
+            <p>The decision matrix for the built-in patch-selection example (Mangel &amp; Clark 1988, ch. 2), solved live in your browser by the same engine as the rest of the page:</p>
+            <div class="about-cols">
+              <figure class="about-fig" id="abDecision"><p class="about-wait">Solving the example&#8230;</p></figure>
+              <div>
+                <p>Read it as a rule book. Each row is a level of energy reserves, each column a period.</p>
+                <ul>
+                  <li><strong>Low reserves</strong>: go to the risky, rich patch. Starvation is the bigger threat, so the predation risk is worth taking.</li>
+                  <li><strong>Moderate reserves</strong>: the middle patch is a better balance.</li>
+                  <li><strong>Full reserves</strong>: hide. There is little to gain from food and something to lose.</li>
+                  <li><strong>Near the end</strong>: the safe choice spreads down the table, because there is not enough time left to starve.</li>
+                </ul>
+                <p>None of these rules was written in. They fall out of the costs, risks, and payoffs.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="about-sec">
+            <h3>Tools for building these models</h3>
+            <p>Since Mangel &amp; Clark (1988) set out the method, most DSVMs have been built by hand for each study: in spreadsheets (Mike Heithaus&#8217;s group built theirs in Excel) or as one-off scripts adapted from the books&#8217; worked examples. A search of the web, GitHub, CRAN, and PyPI in October 2026 found no maintained tool made for these models, and none with a point-and-click interface. The nearest relatives:</p>
+            <div class="about-table-wrap">
+              <table class="about-table">
+                <thead><tr><th>Tool</th><th>What it is</th><th>Gap for DSVM users</th></tr></thead>
+                <tbody>
+                  <tr><td><a href="https://cran.r-project.org/package=MDPtoolbox" target="_blank" rel="noopener">MDPtoolbox</a> (R, MATLAB; Python port <a href="https://github.com/sawcordwell/pymdptoolbox" target="_blank" rel="noopener">pymdptoolbox</a>)</td><td>General solver for Markov decision problems (Chad&#232;s et al. 2014, <em>Ecography</em>). Maintained.</td><td>Code only. You build the transition matrices yourself; no ecological vocabulary and no individual-based simulation.</td></tr>
+                  <tr><td><a href="https://github.com/cboettig/pdg_control" target="_blank" rel="noopener">pdg_control</a> (R)</td><td>Stochastic dynamic programming for fisheries and population management (Boettiger et al. 2015).</td><td>Not updated for years; aimed at harvest policy, not animal behaviour.</td></tr>
+                  <tr><td>Marescot et al. (2013, <em>MEE</em>) primer</td><td>A tutorial with worked R code.</td><td>Teaching code for one example, not a general tool.</td></tr>
+                  <tr><td>Reimer et al. (2019, <em>MEE</em>)</td><td>A matrix method for analysing DSVM results without simulation.</td><td>A method paper; no software package found. Its two-patch model is one of this builder&#8217;s test cases.</td></tr>
+                  <tr><td>Fisheries fleet DSVMs (Poos et al. 2010; Batsleer 2016)</td><td>DSVMs of where fishing vessels choose to fish.</td><td>Bespoke research code; no public package found.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint">&#8220;Not found&#8221; means not found in that search; a tool held privately or under another name could still exist.</p>
+          </section>
+
+          <section class="about-sec">
+            <h3>What this builder adds</h3>
+            <ul class="about-adds">
+              <li>No code: every parameter is entered in a form and checked before solving; nothing is assumed silently.</li>
+              <li>Any number of state variables, with formulas allowed for risks, outcomes, and fitness.</li>
+              <li>Exact fitness and decision tables plus an individual-based simulation, with an exact projection overlaid to check the simulation.</li>
+              <li>Two independent engines (this web page and a Python command-line version) that are tested to give identical answers.</li>
+              <li>Everything exports to CSV, and models save as small files you can share and cite.</li>
+            </ul>
+          </section>
+
+          <section class="about-sec">
+            <h3>Further reading</h3>
+            <ul class="about-refs">
+              <li>Mangel, M. &amp; Clark, C. W. (1988). <em>Dynamic Modeling in Behavioral Ecology</em>. Princeton University Press.</li>
+              <li>Houston, A. I. &amp; McNamara, J. M. (1999). <em>Models of Adaptive Behaviour</em>. Cambridge University Press.</li>
+              <li>Clark, C. W. &amp; Mangel, M. (2000). <em>Dynamic State Variable Models in Ecology: Methods and Applications</em>. Oxford University Press.</li>
+              <li>Reimer, J. R., Mangel, M., Derocher, A. E. &amp; Lewis, M. A. (2019). Matrix methods for stochastic dynamic programming in ecology and evolutionary biology. <em>Methods in Ecology and Evolution</em> 10: 1952&#8211;1961.</li>
+            </ul>
+          </section>
+
+        </div>
+      </details>
     </div>
     <svg class="lattice" viewBox="0 0 132 64" aria-hidden="true" focusable="false">
       <g class="lattice-dots"></g>
@@ -209,5 +344,6 @@
 </footer>
 
 <script type="module" src="app.js"></script>
+<script type="module" src="about.js"></script>
 </body>
 </html>
